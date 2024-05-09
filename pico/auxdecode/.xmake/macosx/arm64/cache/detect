@@ -1,0 +1,13 @@
+{
+    ["detect.sdks.find_xcode"] = {
+        xcode = {
+            sdkdir = "/Applications/Xcode.app",
+            target_minver = "13.3",
+            sdkver = "13.3"
+        }
+    },
+    find_program = {
+        zig = false,
+        cmake = "/opt/homebrew/bin/cmake"
+    }
+}

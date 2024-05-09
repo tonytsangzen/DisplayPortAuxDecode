@@ -66,7 +66,7 @@ int aux_recv(char* msg, int len){
 
 	int state = 0;
 
-	char chs[8];
+	char chs[20];
 	char temp[sizeof(chs) * 8];
 	char align[sizeof(chs) * 8];
 
@@ -78,8 +78,10 @@ int aux_recv(char* msg, int len){
 
 	while(1){
 		spi_transfer(0, chs, sizeof(chs));	
+		DumpWave("AUX", chs, sizeof(chs)*8);
 		int len = BitStreamSpread(chs, sizeof(chs) * 8, temp);
 		len = BitStreamAlign(temp,  len, align);
+		//DumpHex("Align", align, len);
 
 		for(int i = 0; i < len; i++){
 		char ch = align[i];
@@ -148,6 +150,7 @@ int aux_recv(char* msg, int len){
 					state = 0;
 				else{
 					state = 10;
+					//printf("%d\n", percharge);
 				}
 				break;
 			//sync end

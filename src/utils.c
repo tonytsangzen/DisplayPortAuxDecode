@@ -1,8 +1,27 @@
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <sys/time.h>
+static char DumpBuf[1024];
+static const  char *DumpLable;
+static int RepeatCnt = 0;
+int isRepeat(const char* lable, char* buf, int len){
+
+	if(lable == DumpLable && memcmp(buf, DumpBuf, len) == 0){
+		printf("repeat: %d\r", ++RepeatCnt);
+		return 1;
+	}
+	DumpLable = lable;
+	if(RepeatCnt)
+		printf("\n");
+	RepeatCnt = 0;
+	memcpy(DumpBuf, buf, len);
+	return 0;
+}
 
 void DumpHex(const char* lable, char* buf, int len){
+	if(isRepeat(lable, buf, len))
+		return;
 	printf("%-8s:", lable);
 	for(int i = 0; i < len; i++){
 		printf("%02x ", (unsigned char)buf[i]);
@@ -14,6 +33,9 @@ void DumpHex(const char* lable, char* buf, int len){
 }
 
 void DumpBit(const char* lable, char* buf, int len){
+	if(isRepeat(lable, buf, len))
+		return;
+	
 	printf("%-8s:", lable);
 	for(int i = 0; i < len;){
 		if(buf[i/8]&(0x80>>(i%8)))
@@ -27,6 +49,26 @@ void DumpBit(const char* lable, char* buf, int len){
 			printf(" ");
 
 		if(i && !(i % 64))
+			printf("\n%-8s:", "");
+	}
+	printf("\n");
+
+}
+
+void DumpWave(const char* lable, char* buf, int len){
+	if(isRepeat(lable, buf, len))
+		return;
+	
+	printf("%-8s:", lable);
+	for(int i = 0; i < len;){
+		if(buf[i/8]&(0x80>>(i%8)))
+			printf("+");
+		else
+			printf("_");
+
+		i++;
+
+		if(i && !(i % 160))
 			printf("\n%-8s:", "");
 	}
 	printf("\n");

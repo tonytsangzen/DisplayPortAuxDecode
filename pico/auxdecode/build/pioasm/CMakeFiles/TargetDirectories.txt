@@ -1,0 +1,3 @@
+/Users/cengtao/work/DisplayPortAuxDecode/pico/auxdecode/build/pioasm/CMakeFiles/pioasm.dir
+/Users/cengtao/work/DisplayPortAuxDecode/pico/auxdecode/build/pioasm/CMakeFiles/edit_cache.dir
+/Users/cengtao/work/DisplayPortAuxDecode/pico/auxdecode/build/pioasm/CMakeFiles/rebuild_cache.dir

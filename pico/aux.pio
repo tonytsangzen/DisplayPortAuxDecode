@@ -1,0 +1,99 @@
+;
+; Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
+;
+; SPDX-License-Identifier: BSD-3-Clause
+;
+
+.program aux_tx
+
+; Transmit one bit every 16 cycles. a '0' is encoded as a high-low sequence
+; (each part lasting half a bit period, or 6 cycles) and a '1' is encoded as a
+; low-high sequence.
+;
+; Side-set bit 0 must be mapped to the GPIO used for TX.
+; Autopull must be enabled -- this program does not care about the threshold.
+; The program starts at the public label 'start'.
+
+.wrap_target
+	out pins, 1 [7]    ;shift encode bit stream
+.wrap
+
+% c-sdk {
+#include "hardware/clocks.h"
+
+static inline void aux_tx_program_init(PIO pio, uint sm, uint offset, uint pin) {
+    pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true);
+    pio_gpio_init(pio, pin);
+
+    pio_sm_config c = aux_tx_program_get_default_config(offset);
+    sm_config_set_out_pins(&c, pin, 1);
+    sm_config_set_out_shift(&c, true, true, 32);
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
+    sm_config_set_clkdiv(&c,  clock_get_hz (clk_sys)/16000000);
+    pio_sm_init(pio, sm, offset, &c);
+
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}
+
+.program aux_rx
+
+; Assumes line is idle low, first bit is 0
+; One bit is 16 cycles
+; a '0' is encoded as 10
+; a '1' is encoded as 01
+;
+; Both the IN base and the JMP pin mapping must be pointed at the GPIO used for RX.
+; Autopush must be enabled.
+; Before enabling the SM, it should be placed in a 'wait 1, pin` state, so that
+; it will not start sampling until the initial line idle state ends.
+out_sync:
+	wait  0 pin 0
+	push
+	wait  1 pin 0
+public start:
+sync_start:				
+	wait 0 pin 0 [11]			;wait high to low to activite bus
+	jmp pin sync_start [15]		;anothor 0 bit , still in sync process
+	jmp pin sync_start [7]		;hear we recv at least 24bit low, goto data phase? 
+
+.wrap_target
+data_phase:
+	jmp pin bit_1				;start data phase
+
+bit_0:
+	wait 1 pin 0				; sync clock at rising edge
+	in pins, 1 [9]
+	jmp data_phase
+
+bit_1:							; hear we are in 1/4 of bit 1
+	nop [6]						; wait 8 clock	
+	jmp pin out_sync			; if bus still high, this is a sync end patten
+	in pins, 1 [6]				; shift 1 bit, delay 5 clock total 8 clock	
+.wrap
+
+% c-sdk {
+#include "hardware/clocks.h"
+
+static inline void aux_rx_program_init(PIO pio, uint sm, uint offset, uint pin) {
+    pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, false);
+    pio_gpio_init(pio, pin);
+
+    pio_sm_config c = aux_rx_program_get_default_config(offset);
+    sm_config_set_in_pins(&c, pin); // for WAIT
+    sm_config_set_jmp_pin(&c, pin); // for JMP
+    sm_config_set_in_shift(&c, false, true, 32);
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_RX);
+    sm_config_set_clkdiv(&c, clock_get_hz (clk_sys)/16000000);
+    pio_sm_init(pio, sm, offset + aux_rx_offset_start, &c);
+
+    // X and Y are set to 0 and 1, to conveniently emit these to ISR/FIFO.
+    pio_sm_exec(pio, sm, pio_encode_set(pio_x, 1));
+    pio_sm_exec(pio, sm, pio_encode_set(pio_y, 0));
+    // Assume line is idle low, and first transmitted bit is 0. Put SM in a
+    // wait state before enabling. RX will begin once the first 0 symbol is
+    // detected.
+    pio_sm_exec(pio, sm, pio_encode_wait_pin(1, 0) | pio_encode_delay(2));
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}

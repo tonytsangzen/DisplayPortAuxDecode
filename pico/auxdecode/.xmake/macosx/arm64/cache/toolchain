@@ -1,0 +1,12 @@
+{
+    xcode_arch_arm64_plat_macosx = {
+        xcode = "/Applications/Xcode.app",
+        arch = "arm64",
+        plat = "macosx",
+        __global = true,
+        xcode_sysroot = "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.3.sdk",
+        bindir = "/Library/Developer/CommandLineTools/usr/bin",
+        xcode_sdkver = "13.3",
+        target_minver = "13.3"
+    }
+}
